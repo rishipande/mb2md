@@ -1,18 +1,24 @@
-#!/opt/local/bin/perl5.34 -w
+#!/usr/bin/perl -w
 #
-# $Id: mb2md.pl,v 1.26 2004/03/28 00:09:46 juri Exp $
 #
-# mb2md-3.20.pl      Converts Mbox mailboxes to Maildir format.
+# Public domain. For more information, please refer to <http://unlicense.org/>
 #
-# Public domain.
 #
-# currently maintained by:
+# Based on:
+# --------------------
+# mb2md.pl      Converts Mbox mailboxes to Maildir format.
+# Fork version stamp (svn): $Id: mb2md.pl,v 1.26 2004/03/28 00:09:46 juri Exp $
+# Forked script version is from a `ports install mb2md` on MacOS 13.x (Ventura).
+# 
+# Credits and Acknowledgements:
+# 3.20+ version line maintained by:
 # Juri Haberland <juri@koschikode.com>
-# initially wrote by:
+# initially written by:
 # Robin Whittle
+# --------------------
 #
-# This script's web abode is http://batleth.sapienti-sat.org/projects/mb2md/ .
-# For a changelog see http://batleth.sapienti-sat.org/projects/mb2md/changelog.txt
+# This script's original web abode is http://batleth.sapienti-sat.org/projects/mb2md/ .
+# For changelog prior to this fork, see http://batleth.sapienti-sat.org/projects/mb2md/changelog.txt
 #
 # The Mbox -> Maildir inner loop is based on  qmail's script mbox2maildir, which
 # was kludged by Ivan Kohler in 1997 from convertandcreate (public domain)
@@ -20,7 +26,7 @@
 #
 # The qmail distribution has a maildir2mbox.c program.
 #
-# What is does:
+# What it does:
 # =============
 #
 # Reads a directory full of Mbox format mailboxes and creates a set of
@@ -184,6 +190,11 @@
 #
 #  -i            Output Maildir directory structure with IMAPdir style
 #                directory names for use with BincIMAP.
+#
+#  -T            Thunderbird compatibility mode, to ensure that the Date is set properly. Use this
+#                flag if you are converting mbox files from the /Users/$user/Library/Thunderbird/Profiles/$profile/ImapMail/
+#                (on a mac), or /home/$user/.thunderbird/profiles/$profile/ImapMail/ (on linux). See note below in source
+#                tagged as 512:Mozilla_Thunderbird to further understand why.
 #
 #
 #  Example
@@ -395,11 +406,11 @@ sub usage() {
     print "       mb2md -h\n";
     print "       mb2md [-c] -m [-d destdir]\n";
     print "       mb2md [-c] -s sourcefile [-d destdir]\n";
-    die   "       mb2md [-c] -s sourcedir [-l wu-mailboxlist] [-R|-f somefolder] [-d destdir] [-r strip_extension]\n";
+    die   "       mb2md [-c] -s sourcedir [-l wu-mailboxlist] [-R|-f somefolder] [-d destdir] [-r strip_extension] [-T]\n";
 }
 		    # get options
 my %opts;
-getopts('d:f:chms:r:l:Ri', \%opts) || usage();
+getopts('d:f:chms:r:l:RiT', \%opts) || usage();
 usage() if ( defined($opts{h})
 	|| (!defined($opts{m}) && !defined($opts{s})) );
 
@@ -501,6 +512,18 @@ if(defined($opts{l}))
     open (LIST,$opts{l}) or die "Could not open mailbox list $opts{l}: $!";
     @flist=<LIST>;
     close LIST;
+}
+
+# if '-T' is specified, run this in Thunderbird compatibility mode
+# 512:Mozilla_Thunderbird writes its files in almost mbox format, with the exception that
+# the "From" line that is used for separation of messages, does not have any trailing
+# strings for either email, or the received date. As such, the $receivedate variable
+# that is later set in the script by parsing the "From" line, is null. The "-T" flag
+# will ensure that the "Date:" header is used to set the $receivedate var instead.
+my $thunderbird_compatibility = undef;
+if(defined($opts{T}))
+{
+    $thunderbird_compatibility = 1;
 }
 
 # if the destination is relative to the home dir,
@@ -1212,6 +1235,7 @@ sub convert
                             # Now scan the line for various status flags
                             # and to fine the Subject line.
 
+
                 $flags  .= $1 if /^Status: ([A-Z]+)/;
                 $flags  .= $1 if /^X-Status: ([A-Z]+)/;
                 if (/^X-Mozilla-Status: ([0-9a-f]{4})/i)
@@ -1242,6 +1266,11 @@ sub convert
                     $flags .= 'F' if($b =~ /[01]{12}1[01]{3}/); #flagged
                     $flags .= 'R' if($b =~ /[01]{11}1[01]{4}/); #seen/read
                 }
+                
+                # Fixing receivedate based on the funky thunderbird mbox format that doesn't
+                # have any email or date in the "From" line
+
+                $receivedate = $1 if /^Date: (.*)/ and defined($thunderbird_compatibility);
                 $subject = $1 if /^Subject: (.*)$/;
 		if ($use_cl eq 1)
 		{
