@@ -2,6 +2,7 @@
 
 # Author: https://github.com/rishipande
 # Purpose: Return all directories under a given path.
+# License: https://unlicense.org/
 
 function usage() {
     echo "Purpose: Return all directories under a given path.";
