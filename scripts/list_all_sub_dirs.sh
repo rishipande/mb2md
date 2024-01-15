@@ -6,7 +6,7 @@
 
 function usage() {
     echo "Purpose: Return all directories under a given path.";
-    echo "$0 DIR_NAME_TO_TRAVERSE";
+    echo "Usage: $0 DIR_NAME_TO_TRAVERSE";
     echo "   DIR_NAME_TO_TRAVERSE should be a directory.";
     echo "   This will return all the sub directories under";
     echo "   DIR_NAME_TO_TRAVERSE.";
